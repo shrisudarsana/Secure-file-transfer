@@ -16,7 +16,8 @@ import json
 import socket
 import datetime
 import threading
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
+import werkzeug.utils
 
 import sys
 import traceback
@@ -200,7 +201,7 @@ def index():
                     "size_kb": round(os.path.getsize(fpath) / 1024, 1)
                 })
     return render_template("index.html", client_files=client_files)
-    
+
 
 # ─── Web File Management Routes ────────────────────────────────────
 
@@ -227,8 +228,7 @@ def web_upload():
 def web_download(dir_type, filename):
     """Download a file from either CLIENT_DIR or SERVER_DIR to the browser."""
     directory = CLIENT_DIR if dir_type == "client" else SERVER_DIR
-    target = os.path.join(directory, filename)
-    if not os.path.exists(target):
+    if not os.path.exists(os.path.join(directory, filename)):
         return "File not found", 404
     return send_from_directory(directory, filename, as_attachment=True)
 

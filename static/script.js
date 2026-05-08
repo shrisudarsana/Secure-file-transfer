@@ -20,6 +20,58 @@ document.addEventListener("DOMContentLoaded", () => {
   setInterval(refreshFiles, 8000);
 });
 
+
+// ─── Web File Management ────────────────────────────────────────
+
+/** Triggers the hidden file input */
+function triggerWebUpload() {
+  document.getElementById('web-upload-input').click();
+}
+
+/** Handles the actual file upload to the server's client_directory */
+async function uploadFromPC() {
+  const fileInput = document.getElementById('web-upload-input');
+  if (!fileInput.files || fileInput.files.length === 0) return;
+
+  const file = fileInput.files[0];
+  const formData = new FormData();
+  formData.append('file', file);
+
+  showProgress(`Uploading ${file.name} to system...`, 50);
+
+  try {
+    const resp = await fetch('/api/web-upload', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await resp.json();
+
+    if (data.success) {
+      // Clear the input so the same file can be uploaded again if needed
+      fileInput.value = '';
+      updateProgress(100, "✅ File uploaded successfully!");
+      setTimeout(() => {
+          hideProgress();
+          refreshFiles(); // Update the lists
+      }, 1500);
+    } else {
+      alert("Upload failed: " + data.message);
+      hideProgress();
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Error uploading file.");
+    hideProgress();
+  }
+}
+
+/** Triggers a browser download of a file from the system */
+function downloadToPC(dirType, filename) {
+  // We can just use window.location to trigger the GET request
+  // which app.py handles with send_from_directory(as_attachment=True)
+  window.location.href = `/api/web-download/${dirType}/${filename}`;
+}
+
 // ─── Tab Switching ────────────────────────────────────────────────
 function switchTab(tab) {
   currentTab = tab;
@@ -157,7 +209,8 @@ function showAlert(aiData, filename) {
   document.getElementById("alert-title").textContent   = "⚠️ Suspicious File Detected!";
   document.getElementById("alert-message").textContent =
     `"${filename}" has been flagged as SUSPICIOUS with ${aiData.confidence}% confidence.`;
-  document.getElementById("alert-reason").textContent  = aiData.reason;
+  const htmlReason = aiData.reason.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  document.getElementById("alert-reason").innerHTML = htmlReason;
   document.getElementById("alert-force").classList.remove("hidden");
   document.getElementById("alert-overlay").classList.remove("hidden");
 }
@@ -244,7 +297,8 @@ function renderAIResult(aiData) {
     </div>`;
   }).join("");
 
-  document.getElementById("reason-box").textContent = "🔍 " + aiData.reason;
+  const htmlReason = aiData.reason.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  document.getElementById("reason-box").innerHTML = "🔍 " + htmlReason;
   document.getElementById("transfer-result").classList.add("hidden");
 }
 
@@ -350,10 +404,14 @@ function renderFileList(containerId, files, icon) {
     container.innerHTML = '<p class="empty-state">No files found</p>';
     return;
   }
+  const dirType = containerId === "client-file-list" ? "client" : "server";
   container.innerHTML = files.map(f =>
     `<div class="file-item">
       <span class="file-item-name">${icon} ${f.name}</span>
-      <span class="file-item-size">${f.size_kb} KB</span>
+      <div class="file-item-right">
+        <span class="file-item-size">${f.size_kb} KB</span>
+        <button class="btn-icon-action" title="Download to PC" onclick="downloadToPC('${dirType}', '${f.name}')">📥</button>
+      </div>
     </div>`
   ).join("");
 }

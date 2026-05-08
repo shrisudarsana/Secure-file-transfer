@@ -116,23 +116,26 @@ def extract_features(filename: str, file_size_bytes: int) -> dict:
 def _build_reason(features: dict, filename: str) -> str:
     """Generate a human-readable reason string for the UI."""
     reasons = []
-    if features["ext_risk"] == 2:
-        # Robustly get extension even for .exe or path/to/.bat
-        ext = os.path.splitext(filename)[1]
-        if not ext and filename.startswith('.'):
-            ext = filename
-        reasons.append(f"High-risk file extension ({ext})")
-    elif features["ext_risk"] == 1:
-        reasons.append("Medium-risk compressed archive")
-    if features["suspicious_name"]:
-        reasons.append("Filename contains suspicious keywords")
+    
     if features["has_double_ext"]:
-        reasons.append("Double file extension detected (masquerading)")
+        reasons.append("⚠️ **Masquerading Attempt**: This file has a double extension (e.g., .jpg.exe), which is a common technique used by malware to trick users into opening an executable.")
+    
+    if features["ext_risk"] == 2:
+        ext = os.path.splitext(filename)[1] or filename
+        reasons.append(f"🚩 **High-Risk Format**: The file uses the '{ext}' extension, which is capable of executing code on your system and is a frequent vector for security threats.")
+    elif features["ext_risk"] == 1:
+        reasons.append("📦 **Compressed Archive**: This is a compressed file. While common, archives are often used to hide malicious payloads from simple scanners.")
+        
+    if features["suspicious_name"]:
+        reasons.append("🔍 **Suspicious Naming**: The filename contains keywords often associated with illegal or malicious software.")
+        
     if features["transfer_freq"] >= 4:
-        reasons.append(f"Abnormally large file ({features['size_kb']:.0f} KB)")
+        reasons.append(f"📊 **Anomalous Size**: At {features['size_kb']:.0f} KB, this file is significantly larger than typical documents in this category, suggesting it might contain hidden data.")
+        
     if not reasons:
-        reasons.append("No significant threat indicators found")
-    return "; ".join(reasons)
+        reasons.append("✅ **Clean Profile**: No known threat signatures or suspicious patterns were detected in the file's metadata.")
+        
+    return " ".join(reasons)
 
 
 # ─── Prediction ───────────────────────────────────────────────────────────────

@@ -192,8 +192,14 @@
     <section class="panel-row">
       <div class="card files-card">
         <div class="card-header">
-          <h2 class="card-title">📁 Client Directory</h2>
-          <button class="btn btn-ghost btn-sm" onclick="refreshFiles()">↻ Refresh</button>
+          <div>
+            <h2 class="card-title">📁 Client Directory</h2>
+            <p class="card-subtitle">Local system storage (client_directory)</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn btn-primary btn-sm" onclick="triggerWebUpload()">📁 Upload from PC</button>
+            <button class="btn btn-ghost btn-sm" onclick="refreshFiles()">↻ Refresh</button>
+          </div>
         </div>
         <div class="file-list" id="client-file-list">
           <p class="empty-state">Loading...</p>
@@ -299,6 +305,9 @@
   <footer class="footer">
     <p>AI-Based Secure File Transfer System &nbsp;|&nbsp; RSA-4096 + SHA-256 + Random Forest ML &nbsp;|&nbsp; Academic Project</p>
   </footer>
+
+  <!-- Hidden file input for web upload -->
+  <input type="file" id="web-upload-input" hidden onchange="uploadFromPC()" />
 
   <script src="/static/script.js?v={{ range(1, 9999) | random }}"></script>
 </body>
