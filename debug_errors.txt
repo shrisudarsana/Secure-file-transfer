@@ -1,0 +1,8 @@
+[2026-05-07 02:49:53.760800] Connection refused in do_socket_upload
+Traceback (most recent call last):
+  File "C:\Users\SRMIST\Downloads\Secure-File-Transfer-Application-master\app.py", line 112, in do_socket_upload
+    client.initiate_connection()
+  File "C:\Users\SRMIST\Downloads\Secure-File-Transfer-Application-master\client.py", line 123, in initiate_connection
+    s.connect(("localhost",5543))
+ConnectionRefusedError: [WinError 10061] No connection could be made because the target machine actively refused it
+----------------------------------------

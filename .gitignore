@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.env/
+
+# Project specific
+logs/
+transfer_log.csv
+client_directory/*
+server_directory/*
+!client_directory/.gitkeep
+!server_directory/.gitkeep
+
+# OS
+.DS_Store
+.vscode/

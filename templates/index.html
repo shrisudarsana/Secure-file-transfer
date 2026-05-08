@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI-Based Secure File Transfer System</title>
+  <meta name="description" content="Secure file transfer with AI-powered threat detection — classifies files as SAFE or SUSPICIOUS before transfer." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <!-- ── Alert Popup ───────────────────────────────────────────── -->
+  <div id="alert-overlay" class="alert-overlay hidden">
+    <div class="alert-box" id="alert-box">
+      <div class="alert-icon" id="alert-icon">⚠️</div>
+      <h2 id="alert-title">Threat Detected!</h2>
+      <p id="alert-message">This file has been flagged as suspicious.</p>
+      <div class="alert-reason" id="alert-reason"></div>
+      <div class="alert-actions">
+        <button id="alert-cancel" class="btn btn-secondary" onclick="closeAlert()">Cancel Transfer</button>
+        <button id="alert-force" class="btn btn-danger hidden" onclick="forceTransfer()">Proceed Anyway</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Header ────────────────────────────────────────────────── -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">🔒</div>
+        <div>
+          <h1 class="logo-title">SecureTransfer AI</h1>
+          <p class="logo-sub">AI-Powered Secure File Transfer System</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <span class="badge badge-blue">🔐 RSA-4096</span>
+        <span class="badge badge-blue">🔑 SHA-256</span>
+        <span class="badge badge-green" id="server-status-badge">⚪ Checking...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Main Content ───────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- Row 1: Stats Cards -->
+    <section class="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon blue">📁</div>
+        <div>
+          <p class="stat-label">Client Files</p>
+          <p class="stat-value" id="stat-client-files">—</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">🖥️</div>
+        <div>
+          <p class="stat-label">Server Files</p>
+          <p class="stat-value" id="stat-server-files">—</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon teal">✅</div>
+        <div>
+          <p class="stat-label">Safe Transfers</p>
+          <p class="stat-value" id="stat-safe">0</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red">🚨</div>
+        <div>
+          <p class="stat-label">Threats Blocked</p>
+          <p class="stat-value" id="stat-blocked">0</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Row 2: Transfer Panel + AI Result -->
+    <section class="panel-row">
+
+      <!-- Transfer Panel -->
+      <div class="card transfer-card">
+        <div class="card-header">
+          <h2 class="card-title">📤 File Transfer</h2>
+          <p class="card-subtitle">Select a file and transfer direction</p>
+        </div>
+
+        <!-- Direction Tabs -->
+        <div class="tab-bar">
+          <button class="tab active" id="tab-upload" onclick="switchTab('upload')">⬆️ Upload</button>
+          <button class="tab" id="tab-download" onclick="switchTab('download')">⬇️ Download</button>
+        </div>
+
+        <!-- Upload Panel -->
+        <div id="panel-upload" class="tab-panel active">
+          <label class="form-label">Select file from client_directory</label>
+          <div class="file-select-wrapper">
+            <select id="upload-file-select" class="form-select" onchange="onUploadFileChange()">
+              <option value="">— Choose a file —</option>
+              {% for f in client_files %}
+              <option value="{{ f.name }}" data-size="{{ (f.size_kb * 1024)|int }}">{{ f.name }} ({{ f.size_kb }} KB)</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="file-info-bar hidden" id="upload-file-info">
+            <span class="info-item">📄 <span id="upload-fname">—</span></span>
+            <span class="info-item">📦 <span id="upload-fsize">—</span></span>
+          </div>
+
+          <button id="btn-analyze-upload" class="btn btn-primary full-width mt-1" onclick="analyzeAndTransfer('upload')" disabled>
+            <span class="btn-icon">🔍</span> Analyze &amp; Transfer
+          </button>
+        </div>
+
+        <!-- Download Panel -->
+        <div id="panel-download" class="tab-panel">
+          <label class="form-label">Select file from server_directory</label>
+          <div class="file-select-wrapper">
+            <select id="download-file-select" class="form-select" onchange="onDownloadFileChange()">
+              <option value="">— Choose a file —</option>
+              {% for f in server_files %}
+              <option value="{{ f.name }}" data-size="{{ (f.size_kb * 1024)|int }}">{{ f.name }} ({{ f.size_kb }} KB)</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="file-info-bar hidden" id="download-file-info">
+            <span class="info-item">🖥️ <span id="download-fname">—</span></span>
+            <span class="info-item">📦 <span id="download-fsize">—</span></span>
+          </div>
+
+          <button id="btn-analyze-download" class="btn btn-primary full-width mt-1" onclick="analyzeAndTransfer('download')" disabled>
+            <span class="btn-icon">🔍</span> Analyze &amp; Transfer
+          </button>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-wrap hidden" id="progress-wrap">
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="progress-bar"></div>
+          </div>
+          <p class="progress-label" id="progress-label">Analyzing...</p>
+        </div>
+      </div>
+
+      <!-- AI Analysis Result -->
+      <div class="card ai-card">
+        <div class="card-header">
+          <h2 class="card-title">🤖 AI Analysis</h2>
+          <p class="card-subtitle">Real-time threat detection result</p>
+        </div>
+
+        <!-- Idle state -->
+        <div id="ai-idle" class="ai-idle">
+          <div class="ai-idle-icon">🛡️</div>
+          <p>Select a file and click<br/><strong>Analyze &amp; Transfer</strong><br/>to run AI inspection</p>
+        </div>
+
+        <!-- Result state -->
+        <div id="ai-result" class="ai-result hidden">
+          <div class="verdict-badge" id="verdict-badge">
+            <span class="verdict-icon" id="verdict-icon">✅</span>
+            <span class="verdict-text" id="verdict-text">SAFE</span>
+          </div>
+
+          <div class="confidence-row">
+            <span class="conf-label">AI Confidence</span>
+            <div class="conf-bar-wrap">
+              <div class="conf-bar" id="conf-bar"></div>
+            </div>
+            <span class="conf-pct" id="conf-pct">0%</span>
+          </div>
+
+          <div class="feature-grid" id="feature-grid"></div>
+
+          <div class="reason-box" id="reason-box"></div>
+
+          <div class="transfer-result hidden" id="transfer-result">
+            <div class="transfer-status-icon" id="transfer-status-icon">✅</div>
+            <p class="transfer-status-text" id="transfer-status-text">Transfer complete</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Row 3: File Explorer -->
+    <section class="panel-row">
+      <div class="card files-card">
+        <div class="card-header">
+          <h2 class="card-title">📁 Client Directory</h2>
+          <button class="btn btn-ghost btn-sm" onclick="refreshFiles()">↻ Refresh</button>
+        </div>
+        <div class="file-list" id="client-file-list">
+          <p class="empty-state">Loading...</p>
+        </div>
+      </div>
+
+      <div class="card files-card">
+        <div class="card-header">
+          <h2 class="card-title">🖥️ Server Directory</h2>
+          <button class="btn btn-ghost btn-sm" onclick="refreshFiles()">↻ Refresh</button>
+        </div>
+        <div class="file-list" id="server-file-list">
+          <p class="empty-state">Loading...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Row 4: Transfer Log -->
+    <section class="log-section">
+      <div class="card log-card">
+        <div class="card-header">
+          <h2 class="card-title">📋 Transfer Log</h2>
+          <div class="log-header-right">
+            <span class="live-dot"></span>
+            <span class="live-label">Live</span>
+            <button class="btn btn-ghost btn-sm" onclick="refreshLogs()">↻ Refresh</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="log-table" id="log-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Filename</th>
+                <th>Size</th>
+                <th>Direction</th>
+                <th>AI Result</th>
+                <th>Confidence</th>
+                <th>Status</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody id="log-tbody">
+              <tr><td colspan="8" class="empty-state">No transfers yet</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Row 5: How It Works -->
+    <section class="how-section">
+      <div class="card how-card">
+        <h2 class="card-title">⚙️ How It Works</h2>
+        <div class="steps-row">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <h3>File Selection</h3>
+              <p>User selects a file from the client directory for upload or enters a server filename to download.</p>
+            </div>
+          </div>
+          <div class="step-arrow">→</div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <h3>AI Inspection</h3>
+              <p>The Random Forest model analyzes extension risk, file size, suspicious keywords, and double extensions.</p>
+            </div>
+          </div>
+          <div class="step-arrow">→</div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <h3>Decision Gate</h3>
+              <p>SAFE files proceed automatically. SUSPICIOUS files trigger an alert — user can cancel or override.</p>
+            </div>
+          </div>
+          <div class="step-arrow">→</div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <h3>Secure Transfer</h3>
+              <p>Approved files transfer via RSA-authenticated, SHA-256 encrypted socket channel (port 5543).</p>
+            </div>
+          </div>
+          <div class="step-arrow">→</div>
+          <div class="step">
+            <div class="step-num">5</div>
+            <div class="step-body">
+              <h3>Audit Log</h3>
+              <p>Every transfer — SAFE, SUSPICIOUS, BLOCKED — is recorded with AI result and timestamp.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Footer ─────────────────────────────────────────────────── -->
+  <footer class="footer">
+    <p>AI-Based Secure File Transfer System &nbsp;|&nbsp; RSA-4096 + SHA-256 + Random Forest ML &nbsp;|&nbsp; Academic Project</p>
+  </footer>
+
+  <script src="/static/script.js?v={{ range(1, 9999) | random }}"></script>
+</body>
+</html>
