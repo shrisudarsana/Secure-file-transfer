@@ -26,10 +26,15 @@ This project implements a custom secure communication protocol designed to prote
    pip install -r requirements.txt
    ```
 
-3. **Start the system**:
-   ```bash
-   sh start_all.sh
-   ```
+## 🏗️ Build and Run
+
+To start the system (both the socket server and the Flask dashboard), run:
+```bash
+sh start_all.sh
+```
+
+Once started, the dashboard will be available at:
+**[http://localhost:5002](http://localhost:5002)**
 
 ## 📋 Security Specs
 - **Authentication**: Client authenticates server via RSA public key.
